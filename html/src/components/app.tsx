@@ -2,15 +2,15 @@ import { h, Component } from 'preact';
 
 import { Terminal } from './terminal';
 
-import type { ITerminalOptions, ITheme } from '@xterm/xterm';
-import type { ClientOptions, FlowControl } from './terminal/xterm';
+import type { ITerminalOptions, ITheme } from 'ghostty-web';
+import type { ClientOptions, FlowControl } from './terminal/ghostty';
 
 const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
 const path = window.location.pathname.replace(/[/]+$/, '');
 const wsUrl = [protocol, '//', window.location.host, path, '/ws', window.location.search].join('');
 const tokenUrl = [window.location.protocol, '//', window.location.host, path, '/token'].join('');
 const clientOptions = {
-    rendererType: 'webgl',
+    rendererType: 'canvas',
     disableLeaveAlert: false,
     disableResizeOverlay: false,
     enableZmodem: false,
@@ -18,7 +18,7 @@ const clientOptions = {
     enableSixel: false,
     closeOnDisconnect: false,
     isWindows: false,
-    unicodeVersion: '11',
+    unicodeVersion: '15',
 } as ClientOptions;
 const termOptions = {
     fontSize: 13,
@@ -44,7 +44,6 @@ const termOptions = {
         brightCyan: '#37e6e8',
         brightWhite: '#f1f1f0',
     } as ITheme,
-    allowProposedApi: true,
 } as ITerminalOptions;
 const flowControl = {
     limit: 100000,

@@ -1,8 +1,7 @@
 import { bind } from 'decko';
 import { Component, h } from 'preact';
-import { Xterm, XtermOptions } from './xterm';
+import { Xterm, XtermOptions } from './ghostty';
 
-import '@xterm/xterm/css/xterm.css';
 import { Modal } from '../modal';
 
 interface Props extends XtermOptions {
@@ -24,7 +23,7 @@ export class Terminal extends Component<Props, State> {
 
     async componentDidMount() {
         await this.xterm.refreshToken();
-        this.xterm.open(this.container);
+        await this.xterm.open(this.container);
         this.xterm.connect();
     }
 

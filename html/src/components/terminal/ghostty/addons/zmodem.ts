@@ -1,6 +1,7 @@
 import { bind } from 'decko';
 import { saveAs } from 'file-saver';
-import { IDisposable, ITerminalAddon, Terminal } from '@xterm/xterm';
+import type { IDisposable, ITerminalAddon } from 'ghostty-web';
+import { Terminal } from 'ghostty-web';
 import * as Zmodem from 'zmodem.js/src/zmodem_browser';
 import { TrzszFilter } from 'trzsz';
 
@@ -24,8 +25,8 @@ export class ZmodemAddon implements ITerminalAddon {
 
     constructor(private options: ZmodeOptions) {}
 
-    activate(terminal: Terminal) {
-        this.terminal = terminal;
+    activate(terminal: unknown) {
+        this.terminal = terminal as Terminal;
         if (this.options.zmodem) this.zmodemInit();
         if (this.options.trzsz) this.trzszInit();
     }

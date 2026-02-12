@@ -5,9 +5,9 @@ const inlineSource = require('gulp-inline-source');
 const rename = require('gulp-rename');
 const through2 = require('through2');
 
-const genHeader = (size, buf, len) => {
+const genHeader = (varName, size, buf, len) => {
     let idx = 0;
-    let data = 'unsigned char index_html[] = {\n  ';
+    let data = `unsigned char ${varName}[] = {\n  `;
 
     for (const value of buf) {
         idx++;
@@ -26,8 +26,10 @@ const genHeader = (size, buf, len) => {
     }
 
     data += '};\n';
-    data += `unsigned int index_html_len = ${len};\n`;
-    data += `unsigned int index_html_size = ${size};\n`;
+    data += `unsigned int ${varName}_len = ${len};\n`;
+    if (size !== undefined) {
+        data += `unsigned int ${varName}_size = ${size};\n`;
+    }
     return data;
 };
 let fileSize = 0;
@@ -44,25 +46,37 @@ task('inline', () => {
     return src('dist/index.html').pipe(inlineSource(options)).pipe(rename('inline.html')).pipe(dest('dist/'));
 });
 
-task(
-    'default',
-    series('inline', () => {
-        return src('dist/inline.html')
-            .pipe(
-                through2.obj((file, enc, cb) => {
-                    fileSize = file.contents.length;
-                    return cb(null, file);
-                })
-            )
-            .pipe(gzip())
-            .pipe(
-                through2.obj((file, enc, cb) => {
-                    const buf = file.contents;
-                    file.contents = Buffer.from(genHeader(fileSize, buf, buf.length));
-                    return cb(null, file);
-                })
-            )
-            .pipe(rename('html.h'))
-            .pipe(dest('../src/'));
-    })
-);
+task('html', () => {
+    return src('dist/inline.html')
+        .pipe(
+            through2.obj((file, enc, cb) => {
+                fileSize = file.contents.length;
+                return cb(null, file);
+            })
+        )
+        .pipe(gzip())
+        .pipe(
+            through2.obj((file, enc, cb) => {
+                const buf = file.contents;
+                file.contents = Buffer.from(genHeader('index_html', fileSize, buf, buf.length));
+                return cb(null, file);
+            })
+        )
+        .pipe(rename('html.h'))
+        .pipe(dest('../src/'));
+});
+
+task('wasm', () => {
+    return src('dist/ghostty-vt.wasm')
+        .pipe(
+            through2.obj((file, enc, cb) => {
+                const buf = file.contents;
+                file.contents = Buffer.from(genHeader('ghostty_vt_wasm', undefined, buf, buf.length));
+                return cb(null, file);
+            })
+        )
+        .pipe(rename('wasm.h'))
+        .pipe(dest('../src/'));
+});
+
+task('default', series('inline', 'html', 'wasm'));

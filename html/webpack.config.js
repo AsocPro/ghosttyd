@@ -40,7 +40,10 @@ const baseConfig = {
             extensions: ['js', 'jsx', 'ts', 'tsx'],
         }),
         new CopyWebpackPlugin({
-            patterns: [{ from: './favicon.png', to: '.' }],
+            patterns: [
+                { from: './favicon.png', to: '.' },
+                { from: '../node_modules/ghostty-web/ghostty-vt.wasm', to: '.' },
+            ],
         }),
         new MiniCssExtractPlugin({
             filename: devMode ? '[name].css' : '[name].[contenthash].css',
@@ -75,7 +78,7 @@ const devConfig = {
         },
         proxy: [
             {
-                context: ['/token', '/ws'],
+                context: ['/token', '/ws', '/ghostty-vt.wasm'],
                 target: 'http://localhost:7681',
                 ws: true,
             },

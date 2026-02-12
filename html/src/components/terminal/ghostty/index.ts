@@ -1,17 +1,8 @@
 import { bind } from 'decko';
-import type { IDisposable, ITerminalOptions } from '@xterm/xterm';
-import { Terminal } from '@xterm/xterm';
-import { CanvasAddon } from '@xterm/addon-canvas';
-import { ClipboardAddon } from '@xterm/addon-clipboard';
-import { WebglAddon } from '@xterm/addon-webgl';
-import { FitAddon } from '@xterm/addon-fit';
-import { WebLinksAddon } from '@xterm/addon-web-links';
-import { ImageAddon } from '@xterm/addon-image';
-import { Unicode11Addon } from '@xterm/addon-unicode11';
+import { Ghostty, Terminal, FitAddon } from 'ghostty-web';
+import type { IDisposable, ITerminalOptions } from 'ghostty-web';
 import { OverlayAddon } from './addons/overlay';
 import { ZmodemAddon } from './addons/zmodem';
-
-import '@xterm/xterm/css/xterm.css';
 
 interface TtydTerminal extends Terminal {
     fit(): void;
@@ -86,10 +77,6 @@ export class Xterm {
     private terminal: Terminal;
     private fitAddon = new FitAddon();
     private overlayAddon = new OverlayAddon();
-    private clipboardAddon = new ClipboardAddon();
-    private webLinksAddon = new WebLinksAddon();
-    private webglAddon?: WebglAddon;
-    private canvasAddon?: CanvasAddon;
     private zmodemAddon?: ZmodemAddon;
 
     private socket?: WebSocket;
@@ -152,9 +139,11 @@ export class Xterm {
     }
 
     @bind
-    public open(parent: HTMLElement) {
-        this.terminal = new Terminal(this.options.termOptions);
-        const { terminal, fitAddon, overlayAddon, clipboardAddon, webLinksAddon } = this;
+    public async open(parent: HTMLElement) {
+        const basePath = window.location.pathname.replace(/[/]+$/, '');
+        const ghostty = await Ghostty.load(basePath + '/ghostty-vt.wasm');
+        this.terminal = new Terminal({ ...this.options.termOptions, ghostty });
+        const { terminal, fitAddon, overlayAddon } = this;
         window.term = terminal as TtydTerminal;
         window.term.fit = () => {
             this.fitAddon.fit();
@@ -162,8 +151,6 @@ export class Xterm {
 
         terminal.loadAddon(fitAddon);
         terminal.loadAddon(overlayAddon);
-        terminal.loadAddon(clipboardAddon);
-        terminal.loadAddon(webLinksAddon);
 
         terminal.open(parent);
         fitAddon.fit();
@@ -180,7 +167,6 @@ export class Xterm {
             })
         );
         register(terminal.onData(data => sendData(data)));
-        register(terminal.onBinary(data => sendData(Uint8Array.from(data, v => v.charCodeAt(0)))));
         register(
             terminal.onResize(({ cols, rows }) => {
                 const msg = JSON.stringify({ columns: cols, rows: rows });
@@ -419,8 +405,7 @@ export class Xterm {
                     break;
                 case 'enableSixel':
                     if (value) {
-                        terminal.loadAddon(register(new ImageAddon()));
-                        console.log('[ttyd] Sixel enabled');
+                        console.warn('[ttyd] Sixel not supported with ghostty-web');
                     }
                     break;
                 case 'closeOnDisconnect':
@@ -441,19 +426,7 @@ export class Xterm {
                     if (value) console.log('[ttyd] is windows');
                     break;
                 case 'unicodeVersion':
-                    switch (value) {
-                        case 6:
-                        case '6':
-                            console.log('[ttyd] setting Unicode version: 6');
-                            break;
-                        case 11:
-                        case '11':
-                        default:
-                            console.log('[ttyd] setting Unicode version: 11');
-                            terminal.loadAddon(new Unicode11Addon());
-                            terminal.unicode.activeVersion = '11';
-                            break;
-                    }
+                    console.log('[ttyd] ghostty-web has Unicode 15.1 built-in');
                     break;
                 default:
                     console.log(`[ttyd] option: ${key}=${JSON.stringify(value)}`);
@@ -469,67 +442,7 @@ export class Xterm {
     }
 
     @bind
-    private setRendererType(value: RendererType) {
-        const { terminal } = this;
-        const disposeCanvasRenderer = () => {
-            try {
-                this.canvasAddon?.dispose();
-            } catch {
-                // ignore
-            }
-            this.canvasAddon = undefined;
-        };
-        const disposeWebglRenderer = () => {
-            try {
-                this.webglAddon?.dispose();
-            } catch {
-                // ignore
-            }
-            this.webglAddon = undefined;
-        };
-        const enableCanvasRenderer = () => {
-            if (this.canvasAddon) return;
-            this.canvasAddon = new CanvasAddon();
-            disposeWebglRenderer();
-            try {
-                this.terminal.loadAddon(this.canvasAddon);
-                console.log('[ttyd] canvas renderer loaded');
-            } catch (e) {
-                console.log('[ttyd] canvas renderer could not be loaded, falling back to dom renderer', e);
-                disposeCanvasRenderer();
-            }
-        };
-        const enableWebglRenderer = () => {
-            if (this.webglAddon) return;
-            this.webglAddon = new WebglAddon();
-            disposeCanvasRenderer();
-            try {
-                this.webglAddon.onContextLoss(() => {
-                    this.webglAddon?.dispose();
-                });
-                terminal.loadAddon(this.webglAddon);
-                console.log('[ttyd] WebGL renderer loaded');
-            } catch (e) {
-                console.log('[ttyd] WebGL renderer could not be loaded, falling back to canvas renderer', e);
-                disposeWebglRenderer();
-                enableCanvasRenderer();
-            }
-        };
-
-        switch (value) {
-            case 'canvas':
-                enableCanvasRenderer();
-                break;
-            case 'webgl':
-                enableWebglRenderer();
-                break;
-            case 'dom':
-                disposeWebglRenderer();
-                disposeCanvasRenderer();
-                console.log('[ttyd] dom renderer loaded');
-                break;
-            default:
-                break;
-        }
+    private setRendererType(value: string) {
+        console.log(`[ttyd] renderer type '${value}' ignored - ghostty-web uses canvas only`);
     }
 }
