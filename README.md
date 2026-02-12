@@ -13,10 +13,10 @@ ttyd is a simple command-line tool for sharing terminal over the web.
 
 # Features
 
-- Built on top of [libuv](https://libuv.org) and [WebGL2](https://developer.mozilla.org/en-US/docs/Web/API/WebGL_API) for speed
-- Fully-featured terminal with [CJK](https://en.wikipedia.org/wiki/CJK_characters) and IME support
+- Built on top of [libuv](https://libuv.org) and [ghostty-web](https://github.com/coder/ghostty-web) (WASM-compiled Ghostty terminal) for speed
+- Fully-featured terminal with [CJK](https://en.wikipedia.org/wiki/CJK_characters) support and Unicode 15.1
 - [ZMODEM](https://en.wikipedia.org/wiki/ZMODEM) ([lrzsz](https://ohse.de/uwe/software/lrzsz.html)) / [trzsz](https://trzsz.github.io) file transfer support
-- [Sixel](https://en.wikipedia.org/wiki/Sixel) image output support ([img2sixel](https://saitoha.github.io/libsixel) / [lsix](https://github.com/hackerb9/lsix))
+- Built-in URL detection and [OSC 8](https://gist.github.com/egmontkob/eb114294efbcd5adb1944c9f3cb5feda) hyperlink support
 - SSL support based on [OpenSSL](https://www.openssl.org) / [Mbed TLS](https://github.com/Mbed-TLS/mbedtls)
 - Run any custom command with options
 - Basic authentication support and many other custom options
@@ -55,6 +55,43 @@ ttyd is a simple command-line tool for sharing terminal over the web.
 - Install with [WinGet](https://github.com/microsoft/winget-cli): `winget install tsl0922.ttyd`
 - Install with [Scoop](https://scoop.sh/#/apps?q=ttyd&s=2&d=1&o=true): `scoop install ttyd`
 - [Compile on Windows](https://github.com/tsl0922/ttyd/wiki/Compile-on-Windows)
+
+## Building with Dagger
+
+The project includes a [Dagger](https://dagger.io) pipeline that builds everything inside containers -- no need to install Node.js, Yarn, cmake, or any C libraries on your host. The only prerequisite is the [Dagger CLI](https://docs.dagger.io/install/).
+
+**Full build** (frontend + C binary):
+
+```bash
+dagger call build --source=. export --path=./build-out
+# produces build-out/ttyd
+```
+
+This runs the complete pipeline: installs JS dependencies, builds the ghostty-web frontend with webpack, generates the C header files (`html.h` and `wasm.h`), then compiles the ttyd binary with cmake.
+
+**Regenerate frontend headers** (after updating `ghostty-web` or changing frontend code):
+
+```bash
+dagger call generate --source=. export --path=./src
+```
+
+This rebuilds just the frontend and writes the updated `src/html.h` and `src/wasm.h`. Useful when you want to iterate on the C code locally with `cmake --build build` without re-running the full pipeline.
+
+**Update yarn.lock** (after changing `package.json`):
+
+```bash
+dagger call yarn-install --source=. export --path=./html
+```
+
+All available pipeline functions:
+
+| Function | Description |
+|---|---|
+| `build` | Full build: frontend + C binary |
+| `generate` | Regenerate `src/html.h` and `src/wasm.h` from frontend source |
+| `frontend` | Same as `generate` (returns the header files as a directory) |
+| `yarn-install` | Run `yarn install`, exports updated `html/` with new `yarn.lock` |
+| `build-local` | Like `build`, but takes an `--output` path directly |
 
 # Usage
 
@@ -100,7 +137,7 @@ Read the example usage on the [wiki](https://github.com/tsl0922/ttyd/wiki/Exampl
 
 ## Browser Support
 
-Modern browsers, See [Browser Support](https://github.com/xtermjs/xterm.js#browser-support).
+Modern browsers with WebAssembly support (Chrome, Firefox, Safari, Edge).
 
 ## Alternatives
 
