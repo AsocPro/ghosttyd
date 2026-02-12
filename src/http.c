@@ -3,6 +3,7 @@
 #include <zlib.h>
 
 #include "html.h"
+#include "wasm.h"
 #include "server.h"
 #include "utils.h"
 
@@ -80,7 +81,8 @@ static bool uncompress_html(char **output, size_t *output_len) {
 }
 
 static void pss_buffer_free(struct pss_http *pss) {
-  if (pss->buffer != (char *)index_html && pss->buffer != html_cache) free(pss->buffer);
+  if (pss->buffer != (char *)index_html && pss->buffer != html_cache && pss->buffer != (char *)ghostty_vt_wasm)
+    free(pss->buffer);
 }
 
 static void access_log(struct lws *wsi, const char *path) {
@@ -126,6 +128,21 @@ int callback_http(struct lws *wsi, enum lws_callback_reasons reason, void *user,
 
         pss->buffer = pss->ptr = strdup(buf);
         pss->len = n;
+        lws_callback_on_writable(wsi);
+        break;
+      }
+
+      if (strcmp(pss->path, endpoints.wasm) == 0) {
+        if (lws_add_http_header_status(wsi, HTTP_STATUS_OK, &p, end) ||
+            lws_add_http_header_by_token(wsi, WSI_TOKEN_HTTP_CONTENT_TYPE,
+                                         (unsigned char *)"application/wasm", 16, &p, end) ||
+            lws_add_http_header_content_length(wsi, (unsigned long)ghostty_vt_wasm_len, &p, end) ||
+            lws_finalize_http_header(wsi, &p, end) ||
+            lws_write(wsi, buffer + LWS_PRE, p - (buffer + LWS_PRE), LWS_WRITE_HTTP_HEADERS) < 0)
+          return 1;
+
+        pss->buffer = pss->ptr = (char *)ghostty_vt_wasm;
+        pss->len = ghostty_vt_wasm_len;
         lws_callback_on_writable(wsi);
         break;
       }

@@ -20,7 +20,7 @@
 volatile bool force_exit = false;
 struct lws_context *context;
 struct server *server;
-struct endpoints endpoints = {"/ws", "/", "/token", ""};
+struct endpoints endpoints = {"/ws", "/", "/token", "/ghostty-vt.wasm", ""};
 
 extern int callback_http(struct lws *wsi, enum lws_callback_reasons reason, void *user, void *in, size_t len);
 extern int callback_tty(struct lws *wsi, enum lws_callback_reasons reason, void *user, void *in, size_t len);
@@ -147,6 +147,7 @@ static void print_config() {
     lwsl_notice("  base-path: %s\n", endpoints.parent);
     lwsl_notice("  index    : %s\n", endpoints.index);
     lwsl_notice("  token    : %s\n", endpoints.token);
+    lwsl_notice("  wasm     : %s\n", endpoints.wasm);
     lwsl_notice("  websocket: %s\n", endpoints.ws);
   }
   if (server->auth_header != NULL) lwsl_notice("  auth header: %s\n", server->auth_header);
@@ -451,7 +452,7 @@ int main(int argc, char **argv) {
 #define sc(f)                                  \
   strncpy(path + len, endpoints.f, 128 - len); \
   endpoints.f = strdup(path);
-        sc(ws) sc(index) sc(token) sc(parent)
+        sc(ws) sc(index) sc(token) sc(wasm) sc(parent)
 #undef sc
       } break;
 #if LWS_LIBRARY_VERSION_NUMBER >= 4000000

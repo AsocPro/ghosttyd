@@ -21,6 +21,7 @@ struct endpoints {
   char *ws;
   char *index;
   char *token;
+  char *wasm;
   char *parent;
 };
 
